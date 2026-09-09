@@ -55,14 +55,20 @@ jobs:
             docker stop angular-app 2>/dev/null || true
             docker rm angular-app 2>/dev/null || true
             
-            # Remove all stopped containers to free up resources and ports
+            # Remove all stopped containers to free up resources
             docker container prune -f
             
-            # Kill any process using port 80 to ensure it's available
-            sudo lsof -ti:80 | xargs sudo kill -9 2>/dev/null || true
+            # Remove all dangling networks
+            docker network prune -f
             
-            # Wait a moment for port to be released
-            sleep 2
+            # Find and kill the process using port 80
+            PORT_PID=$(netstat -tulpn 2>/dev/null | grep ':80 ' | awk '{print $NF}' | cut -d'/' -f1)
+            if [ ! -z "$PORT_PID" ] && [ "$PORT_PID" != "-" ]; then
+              kill -9 $PORT_PID 2>/dev/null || true
+            fi
+            
+            # Wait for port to be released
+            sleep 3
             
             # Run the new container on port 80
             docker run -d \
